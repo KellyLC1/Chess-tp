@@ -5,6 +5,7 @@ from move import Move
 
 import copy
 import os
+import chess
 
 class Board:
 
@@ -458,3 +459,23 @@ class Board:
 
         # king
         self.squares[row_other][4] = Square(row_other, 4, King(color))
+
+    def to_fen(self):
+        board = chess.Board()
+        board.clear_board()
+        for row in range(8):
+            for col in range(8):
+                square = self.squares[row][col]
+                if square.has_piece():
+                    piece = square.piece
+                    color = chess.WHITE if piece.color == 'white' else chess.BLACK
+                    piece_type = {
+                        'Pawn': chess.PAWN,
+                        'Knight': chess.KNIGHT,
+                        'Bishop': chess.BISHOP,
+                        'Rook': chess.ROOK,
+                        'Queen': chess.QUEEN,
+                        'King': chess.KING
+                    }[type(piece).__name__]
+                    board.set_piece_at(chess.square(col, row), chess.Piece(piece_type, color))
+        return board.fen()

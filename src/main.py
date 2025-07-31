@@ -6,6 +6,10 @@ from game import Game
 from square import Square
 from move import Move
 
+from tensorflow.keras.models import load_model
+from prep_data import fen_to_tensor
+model = load_model("model_eval.h5")
+
 class Main:
 
     def __init__(self):
@@ -88,21 +92,21 @@ class Main:
 
                         # valid move ?
                         if board.valid_move(dragger.piece, move):
-                            # normal capture
                             captured = board.squares[released_row][released_col].has_piece()
                             board.move(dragger.piece, move)
-                            # print('VALID MOVE:', move)
-                            board.set_true_en_passant(dragger.piece)                            
+                            board.set_true_en_passant(dragger.piece)
+
+                            # Évaluation par le modèle
+                            fen = board.to_fen()
+                            tensor = fen_to_tensor(fen).reshape(1, 768)
+                            eval_model = model.predict(tensor)[0][0]
+                            print("Évaluation du modèle :", eval_model)
 
                             # show methods
                             game.show_bg(screen)
                             game.show_last_move(screen)
                             game.show_pieces(screen)
-                            # next turn
                             game.next_turn()
-                            # if game.is_checkmate(game.board.next_turn()):
-                            #     print("Échec et mat ! " + piece.color +" à gagné !" )
-                            #     self.running = False
                     
                     dragger.undrag_piece()
                 
