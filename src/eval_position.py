@@ -4,13 +4,13 @@ import chess.engine
 from prep_data import load_games, pgn_to_csv, fen_to_tensor
 
 pgn_path = 'dataset/lichess_elite_2022-04.pgn'
-games = load_games(pgn_path, max_games=250)
+games = load_games(pgn_path, max_games=100)
 print(f"{len(games)} parties chargées.")
  
-pgn_to_csv(pgn_path, max_games=250)
+pgn_to_csv(pgn_path, max_games=100)
 
 # Chemin vers Stockfish
-STOCKFISH_PATH = r"C:\Users\elyes\Desktop\Ipssi\S11_28-07\Chess_engine_TP\stockfish\stockfish.exe"
+STOCKFISH_PATH = r"C:\Users\keell\Downloads\stockfish-windows-x86-64-avx2\stockfish\stockfish-windows-x86-64-avx2.exe"
 
 df = pd.read_csv("chess_positions.csv")
 engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)

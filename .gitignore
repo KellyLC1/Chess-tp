@@ -1,3 +1,6 @@
 __pycache__/
 *.pgn
 *.csv
+stockfish/
+model_eval.h5
+test.py
