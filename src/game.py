@@ -106,13 +106,17 @@ class Game:
     # other methods
 
     def next_turn(self):
-        self.next_player = 'white' if self.next_player == 'black' else 'black'
+        self.next_player = 'black' if self.next_player == 'white' else 'white'
 
     def set_hover(self, row, col):
         self.hovered_sqr = self.board.squares[row][col]
 
     def change_theme(self):
         self.config.change_theme()
+
+    def next_turn(self):
+        self.next_player = 'black' if self.next_player == 'white' else 'white'
+
 
 
     def reset(self):

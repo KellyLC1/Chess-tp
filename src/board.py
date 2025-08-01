@@ -2,6 +2,8 @@ from const import *
 from square import Square
 from piece import *
 from move import Move
+from prep_data import fen_to_tensor
+from minimax import minimax
 
 import copy
 import os
@@ -12,6 +14,7 @@ class Board:
     def __init__(self):
         self.squares = [[0, 0, 0, 0, 0, 0, 0, 0] for col in range(COLS)]
         self.last_move = None
+        self.turn = True  # True for white, False for black
         self._create()
         self._add_pieces('white')
         self._add_pieces('black')
@@ -54,12 +57,13 @@ class Board:
         # set last move
         self.last_move = move
 
-    def valid_move(self, piece, move):
+    def legal_move(self, piece, move):
         target_square = self.squares[move.final.row][move.final.col]
         if target_square.has_piece() and isinstance(target_square.piece, King):
-                # print(" Il est interdit de capturer le roi !")
+                print(" Echec et mat !")
                 return False
-
+        # print(f"Current player: {'white' if self.turn else 'black'}")
+        
         return move in piece.moves
 
     # def get_fen(self):
@@ -111,10 +115,6 @@ class Board:
         # Add default values for active color, castling, en passant, halfmove, fullmove
         fen += ' w - - 0 1'
         return fen
-    
-    def to_fen(self):
-        return self.get_fen()
-    
     def check_promotion(self, piece, final):
         if final.row == 0 or final.row == 7:
             self.squares[final.row][final.col].piece = Queen(piece.color)
@@ -150,8 +150,13 @@ class Board:
         
         return False
 
-    # def is_checkmate(self, color):
-    #     return self.is_in_check(color) and self.no_valid_moves(color)
+    def get_legal_moves(fen):
+        board = chess.Board(fen)
+        return list(board.legal_moves)
+    
+    # def is_checkmate(self):
+        
+    #     return self.board.is_checkmate() #and self.no_valid_moves(color)
 
     def calc_moves(self, piece, row, col, bool=True):
         '''
@@ -512,3 +517,27 @@ class Board:
 
         # king
         self.squares[row_other][4] = Square(row_other, 4, King(color))
+
+        def evaluate_moves(fen, model):
+            board = chess.Board(fen)
+            legal_moves = list(board.legal_moves)
+            move_scores = []
+
+            for move in legal_moves:
+                board.push(move)  # Joue le coup
+                new_fen = board.fen()  # Obtiens la nouvelle position
+                vector = fen_to_tensor(new_fen).reshape(1, -1)  # Convertis en vecteur
+                score = model.predict(vector, verbose=0)[0][0]  # Prédiction du modèle
+                move_scores.append((move, score))
+                board.pop()  # Annule le coup
+
+            return move_scores
+        
+
+    def get_best_move(fen, model):
+        move_scores = evaluate_moves(fen, model)
+        best_move = max(move_scores, key=lambda x: x[1])  # Trie par score
+        return best_move
+    
+    
+        

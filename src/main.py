@@ -1,14 +1,17 @@
 import pygame
 import sys
+import numpy as np
+import chess
 
+from prep_data import *
+from model import *
+from tensorflow.keras.models import load_model
 from const import *
 from game import Game
 from square import Square
 from move import Move
-
-from tensorflow.keras.models import load_model
-from prep_data import fen_to_tensor
-model = load_model("model_eval.h5")
+from board import *
+from minimax import minimax 
 
 class Main:
 
@@ -17,6 +20,20 @@ class Main:
         self.screen = pygame.display.set_mode( (WIDTH, HEIGHT) )
         pygame.display.set_caption('Chess')
         self.game = Game()
+        self.model = load_model("model_eval.h5")  
+    
+    def evaluate_position(self,fen):
+        vector = fen_to_tensor(fen).reshape(1, -1)  # (1, 768)
+        score = self.model.predict(vector, verbose=0)[0][0]
+        return score
+    
+    
+    def get_best_move_with_minimax(self, fen, depth, model):
+   
+        board = chess.Board(fen)
+        maximizing_player = board.turn
+        _, best_move = minimax(board, depth, float('-inf'), float('inf'), maximizing_player, model)
+        return best_move
 
     def mainloop(self):
         
@@ -24,6 +41,8 @@ class Main:
         game = self.game
         board = self.game.board
         dragger = self.game.dragger
+
+        predict_next_move = True
 
         while True:
             # show methods
@@ -35,6 +54,14 @@ class Main:
 
             if dragger.dragging:
                 dragger.update_blit(screen)
+
+            # Prédire le meilleur coup avant le tour du joueur
+            if predict_next_move:
+                fen = board.get_fen()
+                depth = 2  # Profondeur de recherche
+                best_move = self.get_best_move_with_minimax(fen, depth, self.model)
+                print(f"Next best move for {game.next_player}: {best_move}")
+                predict_next_move = False
 
             for event in pygame.event.get():
 
@@ -91,23 +118,55 @@ class Main:
                         move = Move(initial, final)
 
                         # valid move ?
-                        if board.valid_move(dragger.piece, move):
+                        if board.legal_move(dragger.piece, move):
+                            # normal capture
                             captured = board.squares[released_row][released_col].has_piece()
                             board.move(dragger.piece, move)
-                            board.set_true_en_passant(dragger.piece)
+                            # print('VALID MOVE:', move)
+                            board.set_true_en_passant(dragger.piece)                            
 
-                            # Évaluation par le modèle
-                            fen = board.to_fen()
-                            tensor = fen_to_tensor(fen).reshape(1, 768)
-                            eval_model = model.predict(tensor)[0][0]
-                            print("Évaluation du modèle :", eval_model)
+                            # if game.next_player == 'white' and not board.turn:
+                            #     board.turn = True  # Force le tour des blancs
+                            # elif game.next_player == 'black' and board.turn:
+                            #     board.turn = False  # Force le tour des noirs
+
+                                                        # Évaluation par le modèle
+                            # fen = board.get_fen()
+                            # tensor = fen_to_tensor(fen).reshape(1, 768)
+                            # eval_model = self.model.predict(tensor)[0][0]
+                            # print("Évaluation du modèle :", eval_model)
 
                             # show methods
                             game.show_bg(screen)
                             game.show_last_move(screen)
                             game.show_pieces(screen)
+                            # next turn
+                            
+                            # if game.is_checkmate(game.board.next_turn()):
+                            #     print("Échec et mat ! " + piece.color +" à gagné !" )
+                            #     self.running = False
+                            fen = board.get_fen()  
+                            tensor = fen_to_tensor(fen) # (1, 768)
+                            # Calcul du meilleur prochain coup
+                            # depth = 3  # Profondeur de recherche
+                            # best_move = self.get_best_move_with_minimax(fen, depth, self.model)
+                            # print(f"Next best move: {best_move}")
+
+                            
+                            # vector = tensor.reshape(1, -1)
+                            eval_score = self.evaluate_position(fen)
+                            eval_round = round(eval_score, 3)
+                            eval_str = format(eval_round, ".3f")
+                            print(f"Position evaluation: {eval_str}")
+
+                            # if board.is_checkmate():
+                            #     print("Checkmate! " + piece.color + " wins!")
+
                             game.next_turn()
-                    
+
+                            predict_next_move = True
+
+
                     dragger.undrag_piece()
                 
                 # key press
